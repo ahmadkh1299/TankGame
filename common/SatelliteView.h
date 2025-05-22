@@ -1,3 +1,4 @@
+#pragma once
 class SatelliteView {
 public:
     virtual ~SatelliteView() {}

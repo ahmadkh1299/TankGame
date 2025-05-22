@@ -1,3 +1,8 @@
+#pragma once
+
+#include <memory>
+#include player.h
+
 class PlayerFactory {
 public:
     virtual ~PlayerFactory() {}
