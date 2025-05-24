@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include "TankAlgorithm.h"
 #include "SatelliteView.h"
 
