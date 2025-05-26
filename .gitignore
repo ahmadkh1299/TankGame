@@ -19,3 +19,4 @@ CMakeLists.txt
 *.xml
 *.iml
 *.xml
+/CMakeFiles
