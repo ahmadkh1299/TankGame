@@ -185,16 +185,16 @@ ActionRequest ZoneControlAlgo::decideNextAction(
 
 ActionRequest ZoneControlAlgo::getAction() {
     turnsSinceLastUpdate_++;
-    
+
     // Request battle info update if:
     // 1. Enough turns have passed since last update
-    // 2. We haven't received initial battle info (turnsSinceLastUpdate_ > UPDATE_INTERVAL)
-    if (turnsSinceLastUpdate_ > UPDATE_INTERVAL) {
+    // 2. We haven't received initial battle info
+    if (turnsSinceLastUpdate_ > UPDATE_INTERVAL || !currentInfo_.has_value()) {
         return ActionRequest::GetBattleInfo;
     }
-    
-    // Cast to MyBattleInfo to access the battlefield state
-    MyBattleInfo& myInfo = static_cast<MyBattleInfo&>(currentInfo_);
+
+    // Access the battlefield state
+    const MyBattleInfo& myInfo = *currentInfo_;
     
     // Create temporary board and objects for decideNextAction
     Board board(myInfo.getCols(), myInfo.getRows());
@@ -233,8 +233,14 @@ ActionRequest ZoneControlAlgo::getAction() {
 }
 
 void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
-    MyBattleInfo& myInfo = static_cast<MyBattleInfo&>(info);
-    currentInfo_ = info;
+    auto* myInfoPtr = dynamic_cast<MyBattleInfo*>(&info);
+    if (!myInfoPtr) {
+        currentInfo_.reset();
+        return;
+    }
+
+    const MyBattleInfo& myInfo = *myInfoPtr;
+    currentInfo_ = myInfo;
     turnsSinceLastUpdate_ = 0;
     
     // Count enemy and ally tanks
