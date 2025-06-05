@@ -1,8 +1,7 @@
-
-#include "Shell.h"
-#include "Direction.h"
-#include "Position.h"
-#include "MovingGameObject.h"
+#include "../include/Shell.h"
+#include "../include/Direction.h"
+#include "../include/Position.h"
+#include "../include/MovingGameObject.h"
 
 Shell::Shell(Position pos, Direction dir, int tankId)
     : MovingGameObject(pos, dir), tankId_(tankId) {}

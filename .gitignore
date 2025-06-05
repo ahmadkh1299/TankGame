@@ -20,3 +20,17 @@ CMakeLists.txt
 *.iml
 *.xml
 /CMakeFiles
+/.cache
+/build
+/.cache/clangd/index
+*.idx
+build/.cmake/api/v1/reply/index-2025-06-05T14-16-29-0071.json
+*.json
+/build
+.cache/clangd/index/ActionRequest.h.239ADC7726261E92.idx
+.cache/clangd/index/BattleInfo.h.41F6DB77F02F4B9B.idx
+.cache/clangd/index/Board.cpp.3EC2FB09A6139147.idx
+.cache/clangd/index/Direction.h.2CDB688B8FDE2152.idx
+/.cache
+/.cache/clangd
+/.cache/clangd

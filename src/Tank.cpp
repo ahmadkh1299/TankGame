@@ -1,8 +1,7 @@
-#include "Tank.h"
-#include "Direction.h"
-#include "Position.h"
-#include "GameObject.h"
-#include "MovingGameObject.h"
+#include "../include/Tank.h"
+#include "../include/Direction.h"
+#include "../include/Position.h"
+#include "../include/MovingGameObject.h"
 
 Tank::Tank(Position pos, Direction dir, int playerId, int id)
         : MovingGameObject(pos, dir), playerId_(playerId), id_(id) {}

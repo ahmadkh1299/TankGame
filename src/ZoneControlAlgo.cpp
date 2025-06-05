@@ -1,14 +1,18 @@
-#include "ZoneControlAlgo.h"
-#include "Wall.h"
+#include "../include/ZoneControlAlgo.h"
+#include "../include/Wall.h"
 #include <cmath>
 #include <climits>
 
 ZoneControlAlgo::ZoneControlAlgo(int tankId)
-        : tankId_(tankId), zoneStart_(0), zoneEnd_(0) {}
+        : tankId_(tankId), zoneStart_(0), zoneEnd_(0), turnsSinceLastUpdate_(0), 
+          lastKnownEnemyCount_(0), lastKnownAllyCount_(0), totalBoardWidth_(0) {}
 
 void ZoneControlAlgo::updateZoneRange(int startX, int endX) {
     zoneStart_ = startX;
     zoneEnd_ = endX;
+    if (totalBoardWidth_ == 0) {
+        totalBoardWidth_ = endX + 1; // Store total board width on first zone update
+    }
 }
 
 Direction getDirectionTo(const Position& from, const Position& to) {
@@ -177,4 +181,115 @@ ActionRequest ZoneControlAlgo::decideNextAction(
     }
 
     return ActionRequest::DoNothing;
+}
+
+ActionRequest ZoneControlAlgo::getAction() {
+    turnsSinceLastUpdate_++;
+    
+    // Request battle info update if:
+    // 1. Enough turns have passed since last update
+    // 2. We haven't received initial battle info (turnsSinceLastUpdate_ > UPDATE_INTERVAL)
+    if (turnsSinceLastUpdate_ > UPDATE_INTERVAL) {
+        return ActionRequest::GetBattleInfo;
+    }
+    
+    // Cast to MyBattleInfo to access the battlefield state
+    MyBattleInfo& myInfo = static_cast<MyBattleInfo&>(currentInfo_);
+    
+    // Create temporary board and objects for decideNextAction
+    Board board(myInfo.getCols(), myInfo.getRows());
+    std::vector<std::unique_ptr<Tank>> enemyTanks;
+    std::vector<std::unique_ptr<Shell>> shells;
+    std::vector<std::unique_ptr<Mine>> mines;
+    
+    // Find self position and create Tank object
+    auto selfPos = myInfo.getSelfPosition();
+    Tank self(Position(selfPos.first, selfPos.second), Direction::Up, tankId_, 0); // Direction will be updated
+    
+    // Scan battlefield and populate objects
+    char enemySymbol = (tankId_ == 1) ? '2' : '1';
+    char allySymbol = (tankId_ == 1) ? '1' : '2';
+    for (size_t y = 0; y < myInfo.getRows(); ++y) {
+        for (size_t x = 0; x < myInfo.getCols(); ++x) {
+            char obj = myInfo.getObjectAt(x, y);
+            Position pos(x, y);
+            
+            if (obj == '#') {
+                board.addGameObject(new Wall(pos), pos);
+            } else if (obj == enemySymbol) {
+                auto enemyTank = std::make_unique<Tank>(pos, Direction::Up, 3 - tankId_, enemyTanks.size());
+                enemyTanks.push_back(std::move(enemyTank));
+            } else if (obj == allySymbol || obj == '%') { // '%' is our own tank
+                // No need to create a Tank object for ally or our own tank
+            } else if (obj == '*') {
+                shells.push_back(std::make_unique<Shell>(pos, Direction::Up, 0)); // Direction unknown
+            } else if (obj == '@') {
+                mines.push_back(std::make_unique<Mine>(pos));
+            }
+        }
+    }
+    
+    return decideNextAction(self, board, enemyTanks, shells, mines);
+}
+
+void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
+    MyBattleInfo& myInfo = static_cast<MyBattleInfo&>(info);
+    currentInfo_ = info;
+    turnsSinceLastUpdate_ = 0;
+    
+    // Count enemy and ally tanks
+    size_t currentEnemyCount = 0;
+    size_t currentAllyCount = 0;
+    char enemySymbol = (tankId_ == 1) ? '2' : '1';
+    char allySymbol = (tankId_ == 1) ? '1' : '2';
+    
+    for (size_t y = 0; y < myInfo.getRows(); ++y) {
+        for (size_t x = 0; x < myInfo.getCols(); ++x) {
+            char obj = myInfo.getObjectAt(x, y);
+            if (obj == enemySymbol) {
+                currentEnemyCount++;
+            } else if (obj == allySymbol || obj == '%') { // '%' is our own tank
+                currentAllyCount++;
+            }
+        }
+    }
+    
+    // Check if any tanks were destroyed
+    bool enemyDestroyed = lastKnownEnemyCount_ > 0 && currentEnemyCount < lastKnownEnemyCount_;
+    bool allyDestroyed = lastKnownAllyCount_ > 0 && currentAllyCount < lastKnownAllyCount_;
+    
+    // Force an immediate update if any tank was destroyed
+    if (enemyDestroyed || allyDestroyed) {
+        turnsSinceLastUpdate_ = UPDATE_INTERVAL + 1;
+    }
+    
+    // Only recalculate zones if an ally was destroyed
+    if (allyDestroyed && totalBoardWidth_ > 0) {
+        // Find our tank's position in the sequence (0-based index)
+        int tankIndex = 0;
+        int tankCount = 0;
+        auto selfPos = myInfo.getSelfPosition();
+        
+        for (size_t y = 0; y < myInfo.getRows(); ++y) {
+            for (size_t x = 0; x < myInfo.getCols(); ++x) {
+                char obj = myInfo.getObjectAt(x, y);
+                if (obj == allySymbol || obj == '%') {
+                    if (x == selfPos.first && y == selfPos.second) {
+                        tankIndex = tankCount;
+                    }
+                    tankCount++;
+                }
+            }
+        }
+        
+        // Recalculate zone based on remaining tanks
+        if (tankCount > 0) {
+            int zoneWidth = totalBoardWidth_ / tankCount;
+            zoneStart_ = tankIndex * zoneWidth;
+            zoneEnd_ = (tankIndex == tankCount - 1) ? totalBoardWidth_ - 1 : (tankIndex + 1) * zoneWidth - 1;
+        }
+    }
+    
+    lastKnownEnemyCount_ = currentEnemyCount;
+    lastKnownAllyCount_ = currentAllyCount;
 }

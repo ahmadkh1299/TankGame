@@ -1,4 +1,4 @@
-#include "Board.h"
+#include "../include/Board.h"
 #include <algorithm>
 
 Board::Board(int w, int h) : width_(w), height_(h) {
