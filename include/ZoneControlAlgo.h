@@ -6,8 +6,10 @@
 #include "Mine.h"
 #include "common/ActionRequest.h"
 #include "common/TankAlgorithm.h"
+#include "MyBattleInfo.h"
 #include <vector>
 #include <memory>
+#include <optional>
 
 class ZoneControlAlgo : public TankAlgorithm {
 public:
@@ -28,7 +30,7 @@ private:
     int tankId_;
     int zoneStart_;
     int zoneEnd_;
-    BattleInfo currentInfo_;
+    std::optional<MyBattleInfo> currentInfo_;
     int turnsSinceLastUpdate_;
     static constexpr int UPDATE_INTERVAL = 4; // Update every 4 turns
     size_t lastKnownEnemyCount_;
