@@ -8,7 +8,8 @@
 class MyBattleInfo : public BattleInfo {
 public:
     // Constructor copies the current battlefield state
-    MyBattleInfo(const SatelliteView& view, int playerIndex, size_t rows, size_t cols);
+    MyBattleInfo(const SatelliteView& view, int playerIndex, size_t rows, size_t cols,
+                 std::pair<size_t, size_t> selfPos);
 
     // Get the character at a specific position as defined in the assignment:
     // '#' - Wall
