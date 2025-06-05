@@ -21,6 +21,9 @@ private:
     int tankId_;
     std::optional<MyBattleInfo> currentInfo_;
     std::vector<Position> currentPath;
+    Direction currentDirection_;
+    int turnsSinceLastUpdate_;
+    static constexpr int UPDATE_INTERVAL = 4;
 
     std::vector<Position> runBFS(const Position& start, const Position& goal,
                                  const std::vector<std::vector<char>>& grid);
