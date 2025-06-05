@@ -54,13 +54,13 @@ InputParser::InputParser(const std::string& filename)
                 board_.addGameObject(mine.get(), pos);
                 activeMines_.push_back(std::move(mine));
             } else if (ch == '1') {
-                Tank t(pos, Direction::Right, 1, ++tankIdCounter);
-                player1Tanks_.push_back(t);
-                board_.addGameObject(&player1Tanks_.back(), pos);
+                auto tank = std::make_unique<Tank>(pos, Direction::Right, 1, ++tankIdCounter);
+                board_.addGameObject(tank.get(), pos);
+                player1Tanks_.push_back(std::move(tank));
             } else if (ch == '2') {
-                Tank t(pos, Direction::Left, 2, ++tankIdCounter);
-                player2Tanks_.push_back(t);
-                board_.addGameObject(&player2Tanks_.back(), pos);
+                auto tank = std::make_unique<Tank>(pos, Direction::Left, 2, ++tankIdCounter);
+                board_.addGameObject(tank.get(), pos);
+                player2Tanks_.push_back(std::move(tank));
             }
         }
     }
@@ -70,11 +70,11 @@ Board InputParser::getBoard() const {
     return board_;
 }
 
-const std::vector<Tank>& InputParser::getPlayer1Tanks() const {
+const std::vector<std::unique_ptr<Tank>>& InputParser::getPlayer1Tanks() const {
     return player1Tanks_;
 }
 
-const std::vector<Tank>& InputParser::getPlayer2Tanks() const {
+const std::vector<std::unique_ptr<Tank>>& InputParser::getPlayer2Tanks() const {
     return player2Tanks_;
 }
 

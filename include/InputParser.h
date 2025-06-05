@@ -13,8 +13,8 @@ public:
     explicit InputParser(const std::string& filename);
 
     Board getBoard() const;
-    const std::vector<Tank>& getPlayer1Tanks() const;
-    const std::vector<Tank>& getPlayer2Tanks() const;
+    const std::vector<std::unique_ptr<Tank>>& getPlayer1Tanks() const;
+    const std::vector<std::unique_ptr<Tank>>& getPlayer2Tanks() const;
     std::vector<std::unique_ptr<Mine>>& getActiveMines();
     std::vector<std::unique_ptr<Wall>>& getActiveWalls();
 
@@ -23,8 +23,8 @@ public:
 
 private:
     Board board_;
-    std::vector<Tank> player1Tanks_;
-    std::vector<Tank> player2Tanks_;
+    std::vector<std::unique_ptr<Tank>> player1Tanks_;
+    std::vector<std::unique_ptr<Tank>> player2Tanks_;
     std::vector<std::unique_ptr<Mine>> activeMines_;
     std::vector<std::unique_ptr<Wall>> activeWalls_;
 
