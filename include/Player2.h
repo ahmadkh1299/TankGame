@@ -1,10 +1,7 @@
 #pragma once
 
 #include "common/Player.h"
-#include "HunterAlgo.h"
-#include "MyBattleInfo.h"
 #include "common/SatelliteView.h"
-#include <memory>
 
 class Player2 : public Player {
 public:
@@ -14,7 +11,6 @@ public:
     void updateTankWithBattleInfo(TankAlgorithm& tank, SatelliteView& satellite_view) override;
 
 private:
-    std::unique_ptr<TankAlgorithm> algo_;
     int player_index_;
     size_t board_width_;
     size_t board_height_;
