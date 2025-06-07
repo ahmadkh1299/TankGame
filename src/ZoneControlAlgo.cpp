@@ -186,6 +186,38 @@ ActionRequest ZoneControlAlgo::decideNextAction(
 ActionRequest ZoneControlAlgo::getAction() {
     turnsSinceLastUpdate_++;
 
+    // Detect ally tank losses using the most recent battle info
+    if (currentInfo_.has_value()) {
+        const MyBattleInfo& info = *currentInfo_;
+
+        size_t currentEnemyCount = 0;
+        size_t currentAllyCount = 0;
+        char enemySymbol = (tankId_ == 1) ? '2' : '1';
+        char allySymbol = (tankId_ == 1) ? '1' : '2';
+
+        for (size_t y = 0; y < info.getRows(); ++y) {
+            for (size_t x = 0; x < info.getCols(); ++x) {
+                char obj = info.getObjectAt(x, y);
+                if (obj == enemySymbol) {
+                    currentEnemyCount++;
+                } else if (obj == allySymbol || obj == '%') {
+                    currentAllyCount++;
+                }
+            }
+        }
+
+        bool allyDestroyed = lastKnownAllyCount_ > 0 &&
+                              currentAllyCount < lastKnownAllyCount_;
+
+        // Update stored counts after comparison so destruction is detected
+        lastKnownEnemyCount_ = currentEnemyCount;
+        lastKnownAllyCount_ = currentAllyCount;
+
+        if (allyDestroyed) {
+            return ActionRequest::GetBattleInfo;
+        }
+    }
+
     // Request battle info update if:
     // 1. Enough turns have passed since last update
     // 2. We haven't received initial battle info
@@ -270,8 +302,8 @@ void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
     bool enemyDestroyed = lastKnownEnemyCount_ > 0 && currentEnemyCount < lastKnownEnemyCount_;
     bool allyDestroyed = lastKnownAllyCount_ > 0 && currentAllyCount < lastKnownAllyCount_;
 
-    // Force an immediate update if any tank was destroyed
-    if (enemyDestroyed || allyDestroyed) {
+    // Force an immediate update only for enemy losses; ally losses are handled in getAction()
+    if (enemyDestroyed) {
         forceUpdateNextTurn_ = true;
     }
     
@@ -302,6 +334,5 @@ void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
         }
     }
     
-    lastKnownEnemyCount_ = currentEnemyCount;
-    lastKnownAllyCount_ = currentAllyCount;
+    // Count updates are handled in getAction() after comparison
 }
