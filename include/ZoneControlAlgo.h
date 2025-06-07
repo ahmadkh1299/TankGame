@@ -30,6 +30,7 @@ private:
     int tankId_;
     int zoneStart_;
     int zoneEnd_;
+    bool forceUpdateNextTurn_ = false;
     std::optional<MyBattleInfo> currentInfo_;
     int turnsSinceLastUpdate_;
     static constexpr int UPDATE_INTERVAL = 4; // Update every 4 turns

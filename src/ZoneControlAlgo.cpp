@@ -189,9 +189,15 @@ ActionRequest ZoneControlAlgo::getAction() {
     // Request battle info update if:
     // 1. Enough turns have passed since last update
     // 2. We haven't received initial battle info
+    if (forceUpdateNextTurn_) {
+        forceUpdateNextTurn_ = false;
+        return ActionRequest::GetBattleInfo;
+    }
+
     if (turnsSinceLastUpdate_ > UPDATE_INTERVAL || !currentInfo_.has_value()) {
         return ActionRequest::GetBattleInfo;
     }
+
 
     // Access the battlefield state
     const MyBattleInfo& myInfo = *currentInfo_;
@@ -259,14 +265,14 @@ void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
             }
         }
     }
-    
+
     // Check if any tanks were destroyed
     bool enemyDestroyed = lastKnownEnemyCount_ > 0 && currentEnemyCount < lastKnownEnemyCount_;
     bool allyDestroyed = lastKnownAllyCount_ > 0 && currentAllyCount < lastKnownAllyCount_;
-    
+
     // Force an immediate update if any tank was destroyed
     if (enemyDestroyed || allyDestroyed) {
-        turnsSinceLastUpdate_ = UPDATE_INTERVAL + 1;
+        forceUpdateNextTurn_ = true;
     }
     
     // Only recalculate zones if an ally was destroyed
