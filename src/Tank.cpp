@@ -63,6 +63,11 @@ void Tank::updateWaitToMoveBackCounter() {
         waitToMoveBackCounter_--;
 }
 
+void Tank::resetIsWaitingToMoveBack() {
+    if (isWaitingToMoveBack_ && waitToMoveBackCounter_ == 0)
+        isWaitingToMoveBack_ = false;
+}
+
 void Tank::resetIsRightAfterMoveBack() {
     isRightAfterMoveBack_ = false;
 }

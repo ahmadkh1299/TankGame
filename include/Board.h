@@ -31,6 +31,10 @@ public:
     void removeAllAt(Position pos);
     void removeObject(GameObject* objToRemove, Position pos);
 
+    bool isWall(Position pos) const {
+        // Returns true if the cell at (x,y) contains a wall
+        return getObjectsAt(pos).front()->getSymbol() == '#';
+    }
 
     //void cleanDestroyedWalls();
     //void clear();

@@ -14,6 +14,9 @@ public:
     int getLifeLeft() const { return lifeLeft_; }
     void decreaseLifeLeft() { lifeLeft_--; }
 
+    bool isDestroyed() const { return lifeLeft_ <= 0; }
+
+
 private:
     int lifeLeft_ = TIMES_TO_HIT_BEFORE_GONE;
 };
