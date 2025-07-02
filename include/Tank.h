@@ -9,8 +9,8 @@
 #include "MovingGameObject.h"
 #include "Position.h"
 #include "Direction.h"
-#include "ActionRequest.h"
-#include "TankAlgorithm.h"
+#include "commom/TankAlgorithm.h"
+#include "common/ActionRequest.h"
 
 class Tank : public MovingGameObject {
 public:
