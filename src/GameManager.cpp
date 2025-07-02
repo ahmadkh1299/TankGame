@@ -1,5 +1,10 @@
 #include "GameManager.h"
 #include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
+#include <string>
+#include <type_traits>
 
 GameManager::GameManager(const PlayerFactory& playerFactory,
                          const TankAlgorithmFactory& tankFactory)
@@ -7,9 +12,21 @@ GameManager::GameManager(const PlayerFactory& playerFactory,
           tankFactory_(tankFactory),
           board_(1, 1) {}
 
-bool GameManager::readBoard(const std::string& inputFile) {
-    InputParser parser(inputFile);
+GameManager::~GameManager() {
+    if (outputFile_.is_open()) {
+        outputFile_.close();
+    }
+}
 
+
+bool GameManager::readBoard(const std::string& inputFile) {
+    ////need to add tanks to board
+    //need to add size of board.
+    //boardWidth_;
+    //boardHeight_;
+
+
+    InputParser parser(inputFile);
     board_ = parser.getBoard();
     maxSteps_ = parser.getMaxSteps();
     numShells_ = parser.getNumShells();
@@ -37,6 +54,8 @@ bool GameManager::readBoard(const std::string& inputFile) {
         return false;
     }
 
+
+
     player1_ = playerFactory_.create(1, board_.getWidth(), board_.getHeight(), maxSteps_, numShells_);
     player2_ = playerFactory_.create(2, board_.getWidth(), board_.getHeight(), maxSteps_, numShells_);
     outputFile_.open(outputFileName_);
@@ -44,175 +63,431 @@ bool GameManager::readBoard(const std::string& inputFile) {
 }
 
 void GameManager::run() {
-    for (int step = 0; step < maxSteps_; ++step) {
-        handleBattleInfoRequests();
-        resolveActions(p1Tanks_, 1);
-        resolveActions(p2Tanks_, 2);
-        cleanUpShells();
-        logStep();
-        if (isGameOver()) break;
+bool gameEndedByBreak = false;
+    while (stepsLeftWhenShellsOver_ > 0 && stepCounter_ < MAX_TOTAL_STEPS)
+    {
+      printToFile("\n--- Step " + std::to_string(stepCounter_) + " ---\n");
+
+      //***counters handling***
+      for (Tank& t : p1Tanks_) {
+        if (!t.isDestroyed) {countersHandler(t);}
+      }
+      for (Tank& t : p2Tanks_) {
+        if (!t.isDestroyed) {countersHandler(t);}
+      }
+
+	  //***deciding tanks actions***
+      for (Tank& t : p1Tanks_) {
+      	if (!t.isDestroyed) { decideAction(t);}
+      }
+      for (Tank& t : p2Tanks_) {
+      	if (!t.isDestroyed)) { decideAction(t);}
+      }
+
+      //***handle shooting***
+	  for (Tank& t : p1Tanks_) {
+      	if (!t.isDestroyed && t.getNextAction() == ActionRequest::Shoot) {
+          handleShoot(t);
+        }
+      }
+       for (Tank& t : p2Tanks_) {
+      	if (!t.isDestroyed && t.getNextAction() == ActionRequest::Shoot) {
+          handleShoot(t);
+        }
+      }
+
+      //***move shells and check collisions***
+      for (int i = 0; i < SHELL_MOVES_PER_STEP; ++i) {
+        shellStep();
+      	cleanupDestroyedObjects(shells_);
+      	cleanupDestroyedObjects(walls_);
+      	cleanupDestroyedObjects(tanks_);
+      }
+
+      //***handle other actions (not shooting)***
+	  for (Tank& t : p1Tanks_) {
+      	if (!t.isDestroyed && t.getNextAction() != ActionRequest::Shoot) {
+          handleAction(t, t.getNextAction());
+        }
+      }
+	  for (Tank& t : p2Tanks_) {
+      	if (!tw.isDestroyed && t.getNextAction() != ActionRequest::Shoot) {
+          handleAction(t, t.getNextAction());
+        }
+      }
+
+    //***check if we need to move the tank back and move it, if yes***
+    for (Tank& t : p1Tanks_) {
+        if (!t.isDestroyed) {handleAutoMoveTankBack(t);}
     }
-    outputFile_ << getFinalResult() << '\n';
+	for (Tank& t : p2Tanks_) {
+    	if (!t.isDestroyed) {handleAutoMoveTankBack(t);}
+    }
+
+    //***resolve collisions***
+    //it's only tank+mine and tank+tank. need to add tanks to the board, and handle tank+tank situation
+	for (Tank& t : p1Tanks_) {
+        if (!t.isDestroyed) {resolveTankCollisionsAtPosition(t);}
+    }
+	for (Tank& t : p2Tanks_) {
+    	if (!t.isDestroyed) {resolveTankCollisionsAtPosition(t);}
+    }
+
+    cleanupDestroyedObjects(mines_);
+    cleanupDestroyedObjects(tanks_);
+
+
+    //***check for winner***
+    if (p1Tanks_.empty() && !p2Tanks_.empty())
+    {
+    	printToFile("\nPlayer 2 wins! (Player 1 has no tanks left)\n)");
+        gameEndedByBreak = true;
+        break;
+    }
+
+    if (!p1Tanks_.empty() && p2Tanks_.empty())
+    {
+    	printToFile("\nPlayer 1 wins! (Player 2 has no tanks left)\n)");
+        gameEndedByBreak = true;
+        break;
+    }
+
+    if (p1Tanks_.empty() && p2Tanks_.empty())
+    {
+    	printToFile("\nIt's a tie! (Both players have no tanks left)\n)");
+        gameEndedByBreak = true;
+        break;
+    }
+
+    //***check if we are in no_shells_left situation***
+    if (!isPlayWhenShellsOver_) //to avoid count the shells, if it's already true
+    {
+      if (getTotalShellsLeft() <= 0) isPlayWhenShellsOver_ = true;
+    }
+    if (isPlayWhenShellsOver_) stepsLeftWhenShellsOver_--;
+
+    stepCounter_++;
+    }
+
+//***check if we are out the loop cuz we got to maximum steps or no more shells ***
+	if (!gameEndedByBreak) {
+   		if (stepCounter_ >= MAX_TOTAL_STEPS) {
+            printToFile("\nGame stopped: max steps exceeded\n");
+            return;
+        } else {
+            printToFile("\nit's a tie! (There are no more shells, and 40 turns have passed)\n");
+            return;
+        }
+    }
+
+    return;
+
 }
 
-void GameManager::logStep() {}
-void GameManager::resolveActions(std::vector<TankWrapper>&, int) {}
-void GameManager::handleBattleInfoRequests() {}
-bool GameManager::isGameOver() const { return false; }
-std::string GameManager::getFinalResult() const { return "Tie, reached max steps"; }
+//Handling tank's actions
+void GameManager::handleMoveTankForward(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.moveForward()) {
+        printBadStep(tank, ActionRequest::MoveForward);
+        return;
+    }
+    Position newPos = tank.getPosition();
+    newPos.wrap(boardWidth_, boardHeight_);
 
-// GameManager.cpp - Additions for collision handling and shell movement
+    //check if there is wall in the new position.
+    //if there is, print bad step and do not move the tank, aka do not change the tank's position
+    const auto& objects = board_.getObjectsAt(newPos);
+    for (const auto& obj : objects)
+    {
+        if (dynamic_cast<Wall*>(obj)) {
+            printBadStep(tank, ActionRequest::MoveForward);
+            return;
+        }
+    }
 
-void GameManager::cleanUpShells() {
-    std::vector<std::unique_ptr<Shell>> remainingShells;
+    //if there is no wall
+    tank.setPosition(newPos);
+    printGoodStep(tank, ActionRequest::MoveForward);
+}
 
-    for (auto& shell : shells_) {
-        for (int i = 0; i < 2; ++i) {
-            if (!shell) break;
-            shell->moveForward();
-            Position pos = shell->getPosition();
+void GameManager::handleMoveTankBack(Tank& tank) {
+    if (tank.getIsRightAfterMoveBack() || (tank.getIsWaitingToMoveBack() && tank.getWaitToMoveBackCounter() == 0) )
+    {
+        //can move back
 
-            GameObject* obj = board_.getObjectsAt(pos);
-            if (!obj) continue;
+        //extra check, cuz if we call it, it should succeed
+        if (!tank.moveBack()) { //this tank's function sets isRightAfterMoveBack = T
+          printToFile(("Actual moving back - tank can't move back for some reason"));
+          tank.resetIsRightAfterMoveBack(); //isRightAfterMoveBack = F
+          return;
+        }
 
-            if (Shell* otherShell = dynamic_cast<Shell*>(obj)) {
-                resolveShellShellCollision(shell.get(), otherShell);
-                shell.reset();  // remove current shell
-                break;
-            } else if (Tank* tank = dynamic_cast<Tank*>(obj)) {
-                resolveShellTankCollision(shell.get(), tank);
-                shell.reset();
-                break;
-            } else if (Wall* wall = dynamic_cast<Wall*>(obj)) {
-                resolveShellWallCollision(shell.get(), wall);
-                shell.reset();
-                break;
+        Position newPos = tank.getPosition();
+        newPos.wrap(boardWidth_, boardHeight_);
+
+        //check if there is wall in the new position.
+        //if there is, print bad step and do not move the tank, aka do not change the tank's position
+        const auto& objects = board_.getObjectsAt(newPos);
+        for (const auto& obj : objects)
+        {
+            if (dynamic_cast<Wall*>(obj)) {
+                printToFile(("Actual moving back - tank can't move back because there is a wall"));
+                tank.resetIsRightAfterMoveBack(); //isRightAfterMoveBack = F
+                return;
             }
         }
 
-        if (shell) {
-            remainingShells.push_back(std::move(shell));
-        }
-    }
-
-    shells_ = std::move(remainingShells);
-}
-
-void GameManager::resolveShellShellCollision(Shell* s1, Shell* s2) {
-    board_.removeGameObject(s1->getPosition(), s1);
-    board_.removeGameObject(s2->getPosition(), s2);
-}
-
-void GameManager::resolveShellTankCollision(Shell* shell, Tank* tank) {
-    board_.removeGameObject(shell->getPosition(), shell);
-    board_.removeGameObject(tank->getPosition(), tank);
-
-    for (auto& t : p1Tanks_) {
-        if (t.tank.get() == tank) t.isKilled = true;
-    }
-    for (auto& t : p2Tanks_) {
-        if (t.tank.get() == tank) t.isKilled = true;
+        //if there is no wall
+        tank.setPosition(newPos);
+        printToFile(("Actual moving back - success"));
+        return;
     }
 }
 
-void GameManager::resolveShellWallCollision(Shell* shell, Wall* wall) {
-    board_.removeGameObject(shell->getPosition(), shell);
-    wall->weaken();  // assume this decrements hitsLeft or similar logic
 
-    if (wall->isDestroyed()) {
-        board_.removeGameObject(wall->getPosition(), wall);
+void GameManager::handleTankAskMoveBack(Tank& tank) { //notice tha name of the action is "MoveBackward", but it's just asking
+    if (tank.getIsRightAfterMoveBack()){
+        //can immediately move, no need to ask
+        printGoodStep(tank, MoveBackward::MoveBackward);
+        handleMoveTankBack(tank);
+        return;
+    }
+    if (!tank.askToMoveBack()) { //return false if the tank is already in waiting state
+        printBadStep(tank, MoveBackward::MoveBackward);
+        return;
+    }
+    printGoodStep(tank, MoveBackward::MoveBackward);
+}
+
+void GameManager::handleShoot(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.shoot()) {
+        printBadStep(tank, ActionRequest::Shoot);
+        return;
+    }
+    shells_.push_back(std::make_unique<Shell>(tank.getPosition(),tank.getDirection(),tank.getId() ) );
+
+    //no need to add the shell to board_, shellStep() is handling this
+
+    printGoodStep(tank, ActionRequest::Shoot);
+}
+
+void GameManager::handleRotateEighthLeft(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.rotateEighthLeft()) {printBadStep(tank, ActionRequest::RotateLeft45);}
+    printGoodStep(tank, ActionRequest::RotateLeft45);
+}
+void GameManager::handleRotateFourthLeft(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.rotateFourthLeft()) {printBadStep(tank, ActionRequest::RotateLeft90);}
+    printGoodStep(tank, ActionRequest::RotateLeft90);
+}
+void GameManager::handleRotateEighthRight(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.rotateEighthRight()) {printBadStep(tank, ActionRequest::RotateRight45);}
+    printGoodStep(tank, ActionRequest::RotateRight45);
+}
+void GameManager::handleRotateFourthRight(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    if (!tank.rotateFourthRight()) printBadStep(tank, ActionRequest::RotateRight90);
+    printGoodStep(tank, ActionRequest::RotateRight90);
+}
+void GameManager::handleDoNothing(Tank& tank) {
+    tank.resetIsRightAfterMoveBack();
+    tank.doNothing();
+    printGoodStep(tank, ActionRequest::DoNothing);
+}
+
+void GameManager::handleRequestBattleInfo(Tank& tank) {
+  tank.resetIsRightAfterMoveBack(); //change "is right after move back" to false
+  //add function here
+  //printBadStep(tank, ActionRequest::GetBattleInfo);
+  //printGoodStep(tank, ActionRequest::GetBattleInfo);
+  return;
+}
+
+//not including shoot
+void GameManager::handleAction(Tank& tank, ActionRequest action) {
+    switch (action) {
+        case ActionRequest::MoveForward: handleMoveTankForward(tank); break;
+        case ActionRequest::MoveBackward: handleTankAskMoveBack(tank); break;
+        case ActionRequest::RotateLeft45: handleRotateEighthLeft(tank); break;
+        case ActionRequest::RotateLeft90: handleRotateFourthLeft(tank); break;
+        case ActionRequest::RotateRight45: handleRotateEighthRight(tank); break;
+        case ActionRequest::RotateRight90: handleRotateFourthRight(tank); break;
+        case ActionRequest::DoNothing: handleDoNothing(tank); break;
+        case ActionRequest::GetBattleInfo: handleGetBattleInfo(tank); break;
+        //case ActionRequest::Shoot: handleShoot(tank); break;
+        default: printBadStep(tank, action); break;
     }
 }
 
-void GameManager::resolveTankTankCollision(Tank* t1, Tank* t2) {
-    board_.removeGameObject(t1->getPosition(), t1);
-    board_.removeGameObject(t2->getPosition(), t2);
 
-    for (auto& t : p1Tanks_) {
-        if (t.tank.get() == t1 || t.tank.get() == t2) t.isKilled = true;
-    }
-    for (auto& t : p2Tanks_) {
-        if (t.tank.get() == t1 || t.tank.get() == t2) t.isKilled = true;
+//helper functions for the run() function
+void  GameManager::decideAction(Tank& t) {
+//HOW
+//std::unique_ptr<TankAlgorithm> algo = t.getAlgorithm();
+return;
+}
+
+int GameManager::getTotalShellsLeft() const {
+    int total = 0;
+    for (const Tank& t : p1Tanks_) total += t.getShellsLeft();
+    for (const Tank& t : p2Tanks_) total += t.getShellsLeft();
+    return total;
+}
+
+
+void  GameManager::countersHandler(Tank& tank)
+{
+
+    tank.updateWaitToMoveBackCounter(); //decrease counter only if the tank is waiting to move back + counter>0
+    tank.resetIsWaitingToMoveBack(); //change waiting_to_move_back to false, only if the tank was in waiting state + counter==0
+
+    tank.updateWaitAfterShootCounter(); //decrease counter only if the tank is after shoot + counter>0
+    tank.resetIsWaitingAfterShoot(); //change waiting_after_shoot to false, only if the tank is after shoot + counter==0
+}
+
+//game manager "automatically" moves the tank back, if the tank asked and waited 2 turns. 3rd turn is the move.
+//this function is called if !t.isDestroyed, so no need to check
+void GameManager::handleAutoMoveTankBack(Tank& tank)
+{
+    //move tank back, if the tank asked and 2 turns has passed (counter==0)
+    if (tank.getIsWaitingToMoveBack() && tank.getWaitToMoveBackCounter()==0 )
+    {
+        handleMoveTankBack(tan!tank.isDestroyed() && k);
     }
 }
 
-/*
- * void GameManager::cleanUpShells() {
-    std::vector<std::unique_ptr<Shell>> remainingShells;
 
-    for (auto& shell : shells_) {
-        bool destroyed = false;
 
-        for (int step = 0; step < 2 && !destroyed; ++step) {
-            shell->moveForward();
-            Position pos = shell->getPosition();
-            const auto& objects = board_.getObjectsAt(pos);
-
-            for (GameObject* obj : objects) {
-                if (auto* otherShell = dynamic_cast<Shell*>(obj)) {
-                    resolveShellShellCollision(shell.get(), otherShell);
-                    destroyed = true;
-                    break;
-                } else if (auto* tank = dynamic_cast<Tank*>(obj)) {
-                    resolveShellTankCollision(shell.get(), tank);
-                    destroyed = true;
-                    break;
-                } else if (auto* wall = dynamic_cast<Wall*>(obj)) {
-                    resolveShellWallCollision(shell.get(), wall);
-                    destroyed = true;
-                    break;
-                }
+void GameManager::resolveShellCollisionsAtPosition(Shell& shell) {
+    Position pos = shell.getPosition();
+    const auto& objects = board_.getObjectsAt(pos);
+    for (const auto& obj : objects) {
+        if (Wall* wall = dynamic_cast<Wall*>(obj)) {
+            if (wall->getLifeLeft() == 2) {
+                wall->decreaseLifeLeft();
+            } else if (wall->getLifeLeft() == 1) {
+                wall->destroy();
             }
+            shell.destroy();
+        } if (Shell* anotherShell = dynamic_cast<Shell*>(obj))
+        {
+            anotherShell->destroy();
+            shell.destroy();
+        } if (Tank* tank = dynamic_cast<Tank*>(obj))
+        {
+            tank->destroy();
+            shell.destroy();
         }
-
-        if (!destroyed) {
-            remainingShells.push_back(std::move(shell));
-        }
-    }
-
-    shells_ = std::move(remainingShells);
-}
-
- void GameManager::resolveShellShellCollision(Shell* s1, Shell* s2) {
-    Position pos = s1->getPosition();
-    board_.removeObject(s1, pos);
-    board_.removeObject(s2, pos);
-}
-
- void GameManager::resolveShellTankCollision(Shell* shell, Tank* tank) {
-    Position pos = shell->getPosition();
-    board_.removeObject(shell, pos);
-    board_.removeObject(tank, pos);
-
-    for (auto& t : p1Tanks_)
-        if (t.tank.get() == tank) t.isKilled = true;
-    for (auto& t : p2Tanks_)
-        if (t.tank.get() == tank) t.isKilled = true;
-}
-
- void GameManager::resolveShellWallCollision(Shell* shell, Wall* wall) {
-    Position pos = shell->getPosition();
-    board_.removeObject(shell, pos);
-    wall->decreaseLifeLeft();
-    if (wall->isDestroyed()) {
-        board_.removeObject(wall, pos);
     }
 }
 
- void GameManager::resolveTankTankCollision(Tank* t1, Tank* t2) {
-    Position pos1 = t1->getPosition();
-    Position pos2 = t2->getPosition();
-    board_.removeObject(t1, pos1);
-    board_.removeObject(t2, pos2);
+//function to remove the destroyed objects from board_ and also from the specific vector
+//each vector is needed, to prevent looping through the whole board
+template<typename T>
+void GameManager::cleanupDestroyedObjects(std::vector<std::unique_ptr<T>>& vec) {
+    vec.erase(std::remove_if(vec.begin(), vec.end(),
+        [&](std::unique_ptr<T>& obj) {
+            if (obj->isDestroyed()) {
+                board_.removeObject(obj.get(), obj->getPosition()); // remove from board
+                return true; // remove from vector
+            }
+            return false;
+        }), vec.end());
+}
 
-    for (auto& t : p1Tanks_)
-        if (t.tank.get() == t1 || t.tank.get() == t2) t.isKilled = true;
-    for (auto& t : p2Tanks_)
-        if (t.tank.get() == t1 || t.tank.get() == t2) t.isKilled = true;
+//explicit instantiations
+template void GameManager::cleanupDestroyedObjects<Shell>(std::vector<std::unique_ptr<Shell>>& vec);
+template void GameManager::cleanupDestroyedObjects<Tank>(std::vector<std::unique_ptr<Tank>>& vec);
+template void GameManager::cleanupDestroyedObjects<Mine>(std::vector<std::unique_ptr<Mine>>& vec);
+template void GameManager::cleanupDestroyedObjects<Wall>(std::vector<std::unique_ptr<Wall>>& vec);
+
+
+void GameManager::moveForwardAndWrap(Shell& shell) {
+    shell.moveForward();
+    Position newPos = shell.getPosition();
+    newPos.wrap(boardWidth_, boardHeight_);
+    shell.setPosition(newPos);
+}
+
+void GameManager::resolveTankCollisionsAtPosition(Tank& tank) {
+    Position pos = tank.getPosition();
+    const auto& objects = board_.getObjectsAt(pos);
+
+    for (const auto& obj : objects) {
+        if (Mine* mine = dynamic_cast<Mine*>(obj)) {
+            mine->destroy();
+            tank.destroy();
+        }
+        if (Tank* anotherTank = dynamic_cast<Tank*>(obj)) {
+            anotherTank->destroy();
+            tank.destroy();
+        }
+    }
+}
+
+void GameManager::shellStep()
+{
+    //Move shells and update board
+    for (auto& shellPtr : shells_)
+    {
+        moveForwardAndWrap(*shellPtr);
+        board_.addGameObject(shellPtr.get(), shellPtr->getPosition());
+    }
+
+    //Check for collisions
+    for (auto& shellPtr : shells_)
+    {
+        if (!shellPtr->isDestroyed())
+        {
+            Position pos = shellPtr->getPosition();
+            handleShellAtPosition(*shellPtr, pos);
+        }
+    }
 }
 
 
+//get pointers
+std::vector<Shell*> GameManager::getShellPtrs() const {
+    std::vector<Shell*> result;
+    for (const auto& shell : shells_)
+    {
+        result.push_back(shell.get());
+    }
+    return result;
+}
 
 
+std::vector<Mine*> GameManager::getMinePtrs() const {
+    std::vector<Mine*> result;
+    for (const auto& mine : mines_)
+    {
+        result.push_back(mine.get());
+    }
+    return result;
+}
 
- */
+//walls?
+//tanks?
+
+//printing functions
+void GameManager::printBadStep(Tank& tank, ActionRequest action) {
+    printToFile("Player " + std::to_string(tank.getPlayerId()) +
+    " asked for a bad step: " + ActionUtils::toString(action));
+}
+
+void GameManager::printGoodStep(Tank& tank, ActionRequest action) {
+    printToFile("Player " + std::to_string(tank.getPlayerId()) +
+                " did step: " + ActionUtils::toString(action));
+}
+
+void GameManager::printToFile(const std::string& message){
+    // std::cout << message << std::endl; //print to console
+    if (outputFile_.is_open()) {
+        outputFile_ << message << std::endl;
+    }
+
+}
+
