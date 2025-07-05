@@ -20,14 +20,10 @@ GameManager::~GameManager() {
 
 
 bool GameManager::readBoard(const std::string& inputFile) {
-    ////need to add tanks to board
-    //need to add size of board.
-    //boardWidth_;
-    //boardHeight_;
-
-
     InputParser parser(inputFile);
     board_ = parser.getBoard();
+    boardWidth_ = board_.getWidth();
+	boardHeight_ = board_.getHeight();
     maxSteps_ = parser.getMaxSteps();
     numShells_ = parser.getNumShells();
     walls_ = std::move(parser.getActiveWalls());
@@ -38,6 +34,11 @@ bool GameManager::readBoard(const std::string& inputFile) {
         auto tank = std::make_unique<Tank>(*t);
         auto algo = tankFactory_.create(1, p1Count);
         p1Tanks_.push_back({std::move(tank), std::move(algo)});
+
+        // Add the tank to the board
+    	Tank* rawTankPtr = p1Tanks_.back().tank.get();
+    	board_.addGameObject(rawTankPtr, rawTankPtr->getPosition());
+
         ++p1Count;
     }
 
@@ -46,6 +47,9 @@ bool GameManager::readBoard(const std::string& inputFile) {
         auto tank = std::make_unique<Tank>(*t);
         auto algo = tankFactory_.create(2, p2Count);
         p2Tanks_.push_back({std::move(tank), std::move(algo)});
+        // Add the tank to the board
+    	Tank* rawTankPtr = p2Tanks_.back().tank.get();
+    	board_.addGameObject(rawTankPtr, rawTankPtr->getPosition());
         ++p2Count;
     }
 
