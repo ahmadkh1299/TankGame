@@ -6,7 +6,6 @@
 #include "Position.h"
 #include "GameObject.h"
 #include "MovingGameObject.h"
-#include "ActionRequest.h"
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -319,8 +318,8 @@ ActionRequest Tank::getLastAction() const
     return lastAction_;
 }
 
-std::unique_ptr<TankAlgorithm>& Tank::getAlgorithm() {
-    return algorithm_;
+TankAlgorithm* Tank::getAlgorithm() const {
+    return algorithm_.get();
 }
 
 bool Tank::getIstRequestedBattleInfo() const {

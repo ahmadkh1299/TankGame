@@ -1,11 +1,12 @@
-#include "GameManager.h"
-#include "SatelliteViewImpl.h"
-#include "MyBattleInfo.h"
+#include "../include/GameManager.h"
+#include "../include/SatelliteViewImpl.h"
+#include "../include/MyBattleInfo.h"
 #include <iostream>
 #include <fstream>
 #include <utility>
 #include <type_traits>
 #include <algorithm>
+#include <memory>
 
 
 GameManager::GameManager(const PlayerFactory& playerFactory, const TankAlgorithmFactory& tankFactory)
@@ -73,8 +74,8 @@ void GameManager::run() {
 
         //***handle get battle info***
         //it's first cuz the view is of the board before the current step
-        for (auto& t : p1Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleGetBattleInfo(*t);
-        for (auto& t : p2Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleGetBattleInfo(*t);
+        for (auto& t : p1Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleRequestBattleInfo(*t);
+        for (auto& t : p2Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleRequestBattleInfo(*t);
 
         //***handle shooting***
         //it's before other actions (except get battle info) cuz this is the choice we made in the game logic:
@@ -146,7 +147,7 @@ ActionRequest GameManager::decideAction(Tank& tank, TankAlgorithm& algo){
 #include "SatelliteViewImpl.h"
 #include "MyBattleInfo.h"
 
-void GameManager::handleGetBattleInfo(Tank& tank) {
+void GameManager::handleRequestBattleInfo(Tank& tank) {
     //pre-action reset and check
     tank.resetIsRightAfterMoveBack();
     if (tank.getIsWaitingToMoveBack())
@@ -172,7 +173,7 @@ void GameManager::handleGetBattleInfo(Tank& tank) {
 
     //determine which player owns this tank
     int playerId = tank.getPlayerId();
-    std::shared_ptr<Player> player = (playerId == 1) ? player1_ : player2_;
+    Player* player = (playerId == 1) ? player1_.get() : player2_.get();
 
     //let the player update the tank's algorithm with BattleInfo
     if (player) {
@@ -359,11 +360,6 @@ void GameManager::handleDoNothing(Tank& tank) {
     tank.resetIsRightAfterMoveBack();
     tank.doNothing();
     printGoodStep(tank, ActionRequest::DoNothing);
-}
-
-void GameManager::handleRequestBattleInfo(Tank& tank) {
-    tank.resetIsRightAfterMoveBack();
-    printGoodStep(tank, ActionRequest::GetBattleInfo);
 }
 
 void GameManager::printToFile(const std::string& message) {
