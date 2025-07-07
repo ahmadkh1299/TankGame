@@ -9,8 +9,9 @@
 #include "MovingGameObject.h"
 #include "Position.h"
 #include "Direction.h"
-#include "commom/TankAlgorithm.h"
+#include "common//TankAlgorithm.h"
 #include "common/ActionRequest.h"
+#include <memory>
 
 class Tank : public MovingGameObject {
 public:
@@ -33,7 +34,7 @@ public:
     int getWaitToMoveBackCounter() const;
     ActionRequest getNextAction() const;
     ActionRequest getLastAction() const;
-    std::unique_ptr<TankAlgorithm> getAlgorithm() const;
+    TankAlgorithm* getAlgorithm() const;
     bool getIstRequestedBattleInfo() const; //not needed?
 
     // Setters
@@ -41,7 +42,7 @@ public:
     //void setWaitAfterShootCounter();
     //void setWaitToMoveBackCounter();
     void setNextAction(ActionRequest action);
-    void setLextAction(ActionRequest action)
+    void setLastAction(ActionRequest action);
 
 
     // Actions
