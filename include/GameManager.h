@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "Board.h"
 #include "Tank.h"
 #include "Mine.h"
@@ -82,7 +84,16 @@ private:
     void resolveShellCollisionsAtPosition(Shell& shell);
 
     template<typename T>
-    void cleanupDestroyedObjects(std::vector<std::unique_ptr<T>>& vec);
+    void cleanupDestroyedObjects(std::vector<std::unique_ptr<T>>& vec) {
+        vec.erase(std::remove_if(vec.begin(), vec.end(),
+            [&](std::unique_ptr<T>& obj) {
+                if (obj->isDestroyed()) {
+                    board_.removeObject(obj.get(), obj->getPosition()); // remove from board
+                    return true; // remove from vector
+                }
+                return false;
+            }), vec.end());
+    }
 
     void moveForwardAndWrap(Shell& shell);
     void resolveTankCollisionsAtPosition(Tank& tank);
