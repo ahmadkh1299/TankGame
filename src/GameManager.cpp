@@ -74,7 +74,7 @@ void GameManager::run() {
             shellStep();
             cleanupDestroyedObjects(shells_);
             cleanupDestroyedObjects(walls_);
-            cleanupDestroyedObjects(mines_);
+            cleanupDestroyedObjects(walls_);
             cleanupDestroyedObjects(p1Tanks_);
             cleanupDestroyedObjects(p2Tanks_);
         }
@@ -106,23 +106,14 @@ void GameManager::run() {
 }
 
 ActionRequest GameManager::decideAction(Tank& tank, TankAlgorithm& algo){
+    ActionRequest action;
+
+    //we chose to check it for the tank
     if (tank.getIsWaitingToMoveBack()) {
-        tank.decrementWaitToMoveBackCounter();
-        return ActionRequest::DoNothing;
+        action = ActionRequest::DoNothing;
     }
 
-    if (tank.getIsWaitingAfterShoot()) {
-        tank.decrementWaitAfterShootCounter();
-        return ActionRequest::DoNothing;
-    }
-
-    ActionRequest action = algo.getAction();
-
-    // Validate back move request
-    if (action == ActionRequest::MoveBackward && !tank.getIsWaitingToMoveBack()) {
-        tank.askToMoveBack();
-        return ActionRequest::DoNothing;
-    }
+    action = algo.getAction();
 
     return action;
 }
@@ -138,29 +129,21 @@ void GameManager::handleShoot(Tank& tank) {
     printGoodStep(tank, ActionRequest::Shoot);
 }
 
+//not including get battle info + shoot
 void GameManager::handleAction(Tank& tank, ActionRequest action) {
     switch (action) {
-        case ActionRequest::MoveForward:
-            tank.moveForward(); printGoodStep(tank, action); break;
-        case ActionRequest::MoveBackward:
-            tank.askToMoveBack(); printGoodStep(tank, action); break;
-        case ActionRequest::RotateLeft45:
-            tank.rotateEighthLeft(); printGoodStep(tank, action); break;
-        case ActionRequest::RotateLeft90:
-            tank.rotateFourthLeft(); printGoodStep(tank, action); break;
-        case ActionRequest::RotateRight45:
-            tank.rotateEighthRight(); printGoodStep(tank, action); break;
-        case ActionRequest::RotateRight90:
-            tank.rotateFourthRight(); printGoodStep(tank, action); break;
-        case ActionRequest::DoNothing:
-            tank.doNothing(); printGoodStep(tank, action); break;
-        case ActionRequest::GetBattleInfo:
-            printGoodStep(tank, action); break;
-        default:
-            printBadStep(tank, action);
+        case ActionRequest::MoveForward: handleMoveTankForward(tank); break;
+        case ActionRequest::MoveBackward: handleTankAskMoveBack(tank); break;
+        case ActionRequest::RotateLeft45: handleRotateEighthLeft(tank); break;
+        case ActionRequest::RotateLeft90: handleRotateFourthLeft(tank); break;
+        case ActionRequest::RotateRight45: handleRotateEighthRight(tank); break;
+        case ActionRequest::RotateRight90: handleRotateFourthRight(tank); break;
+        case ActionRequest::DoNothing: handleDoNothing(tank); break;
+        //case ActionRequest::GetBattleInfo: handleGetBattleInfo(tank); break;
+        //case ActionRequest::Shoot: handleShoot(tank); break;
+        default: printBadStep(tank, action); break;
     }
 }
-
 
 void GameManager::handleAutoMoveTankBack(Tank& tank) {
     if (tank.getIsWaitingToMoveBack() && tank.getWaitToMoveBackCounter() == 0) {
