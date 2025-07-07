@@ -1,9 +1,12 @@
 #include "GameManager.h"
+#include "SatelliteViewImpl.h"
+#include "MyBattleInfo.h"
 #include <iostream>
 #include <fstream>
 #include <utility>
 #include <type_traits>
 #include <algorithm>
+
 
 GameManager::GameManager(const PlayerFactory& playerFactory, const TankAlgorithmFactory& tankFactory)
         : playerFactory_(playerFactory),
@@ -49,9 +52,11 @@ void GameManager::run() {
     while (stepCounter < maxSteps_ && shellsLeftCounter > 0) {
         printToFile("\n--- Step " + std::to_string(stepCounter) + " ---");
 
+        //***counters handling***
         for (auto& t : p1Tanks_) if (!t->isDestroyed()) countersHandler(*t);
         for (auto& t : p2Tanks_) if (!t->isDestroyed()) countersHandler(*t);
 
+        //***deciding tanks actions***
         for (auto& t : p1Tanks_) {
             if (!t->isDestroyed()) {
                 ActionRequest action = decideAction(*t, *t->getAlgorithm());
@@ -66,25 +71,45 @@ void GameManager::run() {
             }
         }
 
+        //***handle get battle info***
+        //it's first cuz the view is of the board before the current step
+        for (auto& t : p1Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleGetBattleInfo(*t);
+        for (auto& t : p2Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::GetBattleInfo) handleGetBattleInfo(*t);
 
+        //***handle shooting***
+        //it's before other actions (except get battle info) cuz this is the choice we made in the game logic:
+        //first, we move the shells. then, we move the tanks.
         for (auto& t : p1Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::Shoot) handleShoot(*t);
         for (auto& t : p2Tanks_) if (!t->isDestroyed() && t->getNextAction() == ActionRequest::Shoot) handleShoot(*t);
 
         for (int i = 0; i < shellMovesPerStep_; ++i) {
-            shellStep();
+            shellStep(); //collisions are handled inside this function
             cleanupDestroyedObjects(shells_);
-            cleanupDestroyedObjects(walls_);
             cleanupDestroyedObjects(walls_);
             cleanupDestroyedObjects(p1Tanks_);
             cleanupDestroyedObjects(p2Tanks_);
+            //no need to clean mines at this point. shells do not hit mines.
         }
 
+        //***handle other actions (not get battle info / shoot)***
         for (auto& t : p1Tanks_) if (!t->isDestroyed() && t->getNextAction() != ActionRequest::Shoot) handleAction(*t, t->getNextAction());
         for (auto& t : p2Tanks_) if (!t->isDestroyed() && t->getNextAction() != ActionRequest::Shoot) handleAction(*t, t->getNextAction());
 
+        //***check if we need to move the tank back and move it, if yes***
+         for (auto& t : p1Tanks_) if (!t->isDestroyed()) handleAutoMoveTankBack(*t);
+         for (auto& t : p2Tanks_) if (!t->isDestroyed()) handleAutoMoveTankBack(*t);
+
+        //***resolve collisions***
         for (auto& t : p1Tanks_) if (!t->isDestroyed()) resolveTankCollisionsAtPosition(*t);
         for (auto& t : p2Tanks_) if (!t->isDestroyed()) resolveTankCollisionsAtPosition(*t);
 
+        cleanupDestroyedObjects(p1Tanks_);
+        cleanupDestroyedObjects(p2Tanks_);
+        cleanupDestroyedObjects(mines_);
+        //no need to clean shells at this point. shells has been handeled before.
+        //no need to clean walls at this point, cuz tanks can not hit walls.
+
+        //***check for winner***
         if (p1Tanks_.empty() && !p2Tanks_.empty()) {
             printToFile("\nPlayer 2 wins! (Player 1 has no tanks left)");
             return;
@@ -117,6 +142,46 @@ ActionRequest GameManager::decideAction(Tank& tank, TankAlgorithm& algo){
 
     return action;
 }
+
+#include "SatelliteViewImpl.h"
+#include "MyBattleInfo.h"
+
+void GameManager::handleGetBattleInfo(Tank& tank) {
+    //pre-action reset and check
+    tank.resetIsRightAfterMoveBack();
+    if (tank.getIsWaitingToMoveBack())
+    {
+      printBadStep(tank, ActionRequest::GetBattleInfo);
+      return;
+    }
+
+    //create a 2D char representation of the board
+    std::vector<std::vector<char>> view(boardHeight_, std::vector<char>(boardWidth_, ' '));
+
+    for (size_t y = 0; y < boardHeight_; ++y) {
+        for (size_t x = 0; x < boardWidth_; ++x) {
+            const auto& objects = board_.getObjectsAt({(int)x, (int)y});
+            if (!objects.empty()) {
+                view[y][x] = objects.front()->getSymbol();  //show only top object
+            }
+        }
+    }
+
+    //create a SatelliteViewImpl from it
+    SatelliteViewImpl satellite(view);
+
+    //determine which player owns this tank
+    int playerId = tank.getPlayerId();
+    std::shared_ptr<Player> player = (playerId == 1) ? player1_ : player2_;
+
+    //let the player update the tank's algorithm with BattleInfo
+    if (player) {
+        player->updateTankWithBattleInfo(*tank.getAlgorithm(), satellite);
+    }
+
+    printGoodStep(tank, ActionRequest::GetBattleInfo);
+}
+
 
 
 void GameManager::handleShoot(Tank& tank) {
