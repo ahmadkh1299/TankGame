@@ -144,6 +144,14 @@ ActionRequest GameManager::decideAction(Tank& tank, TankAlgorithm& algo){
     return action;
 }
 
+int GameManager::getTotalShellsLeft() const
+{
+    int total = 0;
+    for (const auto& t : p1Tanks_) total += t->getShellsLeft();
+    for (const auto& t : p2Tanks_) total += t->getShellsLeft();
+    return total;
+}
+
 #include "SatelliteViewImpl.h"
 #include "MyBattleInfo.h"
 
@@ -209,6 +217,15 @@ void GameManager::handleAction(Tank& tank, ActionRequest action) {
         //case ActionRequest::Shoot: handleShoot(tank); break;
         default: printBadStep(tank, action); break;
     }
+}
+
+void GameManager::countersHandler(Tank& tank)
+{
+    tank.updateWaitToMoveBackCounter(); //decrease counter only if the tank is waiting to move back + counter>0
+    tank.resetIsWaitingToMoveBack(); //change waiting_to_move_back to false, only if the tank was in waiting state + counter==0
+
+    tank.updateWaitAfterShootCounter(); //decrease counter only if the tank is after shoot + counter>0
+    tank.resetIsWaitingAfterShoot(); //change waiting_after_shoot to false, only if the tank is after shoot + counter==0
 }
 
 void GameManager::handleAutoMoveTankBack(Tank& tank) {
@@ -377,3 +394,9 @@ void GameManager::printGoodStep(Tank& tank, ActionRequest action) {
     printToFile("Player " + std::to_string(tank.getPlayerId()) +
                 " did step: " + ActionUtils::toString(action));
 }
+
+
+template void GameManager::cleanupDestroyedObjects<Shell>(std::vector<std::unique_ptr<Shell>>&);
+template void GameManager::cleanupDestroyedObjects<Wall>(std::vector<std::unique_ptr<Wall>>&);
+template void GameManager::cleanupDestroyedObjects<Tank>(std::vector<std::unique_ptr<Tank>>&);
+template void GameManager::cleanupDestroyedObjects<Mine>(std::vector<std::unique_ptr<Mine>>&);
