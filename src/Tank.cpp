@@ -78,16 +78,6 @@ bool Tank::askToMoveBack() {
 
 }
 
-void Tank::decrementWaitToMoveBackCounter() {
-    if (waitToMoveBackCounter_ > 0)
-        --waitToMoveBackCounter_;
-}
-
-void Tank::decrementWaitAfterShootCounter() {
-    if (waitAfterShootCounter_ > 0)
-        --waitAfterShootCounter_;
-}
-
 
 // Returns true if the tank did move.
 bool Tank::moveBack()
