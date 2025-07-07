@@ -70,13 +70,14 @@ Board InputParser::getBoard() const {
     return board_;
 }
 
-const std::vector<std::unique_ptr<Tank>>& InputParser::getPlayer1Tanks() const {
-    return player1Tanks_;
+std::vector<std::unique_ptr<Tank>> InputParser::getPlayer1Tanks() {
+    return std::move(player1Tanks_);
 }
 
-const std::vector<std::unique_ptr<Tank>>& InputParser::getPlayer2Tanks() const {
-    return player2Tanks_;
+std::vector<std::unique_ptr<Tank>> InputParser::getPlayer2Tanks() {
+    return std::move(player2Tanks_);
 }
+
 
 std::vector<std::unique_ptr<Mine>>& InputParser::getActiveMines() {
     return activeMines_;

@@ -78,6 +78,16 @@ bool Tank::askToMoveBack() {
 
 }
 
+void Tank::decrementWaitToMoveBackCounter() {
+    if (waitToMoveBackCounter_ > 0)
+        --waitToMoveBackCounter_;
+}
+
+void Tank::decrementWaitAfterShootCounter() {
+    if (waitAfterShootCounter_ > 0)
+        --waitAfterShootCounter_;
+}
+
 
 // Returns true if the tank did move.
 bool Tank::moveBack()
@@ -319,15 +329,14 @@ ActionRequest Tank::getLastAction() const
     return lastAction_;
 }
 
-std::unique_ptr<TankAlgorithm> getAlgorithm() const
-{
-  return algorithm_;
+std::unique_ptr<TankAlgorithm>& Tank::getAlgorithm() {
+    return algorithm_;
 }
 
-bool getIstRequestedBattleInfo() const
-{
-  return requestedBattleInfo_;
+bool Tank::getIstRequestedBattleInfo() const {
+    return requestedBattleInfo_;
 }
+
 
 
 
@@ -337,7 +346,6 @@ void Tank::setNextAction(ActionRequest action)
     nextAction_ = action;
 }
 
-void Tank::setLextAction(ActionRequest action)
-{
-    latAction_ = action;
+void Tank::setLastAction(ActionRequest action) {
+    lastAction_ = action;
 }

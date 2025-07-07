@@ -21,7 +21,7 @@ class GameManager {
 public:
     static constexpr int STEPS_WHEN_SHELLS_OVER = 40;
     static constexpr int SHELL_MOVES_PER_STEP = 2;
-  	static constexpr int NUN_SHELLS = 20;
+  	static constexpr int NUM_SHELLS = 20;
     const int MAX_TOTAL_STEPS = 50000;
 
     GameManager(const PlayerFactory& playerFactory,
@@ -47,8 +47,8 @@ private:
     std::unique_ptr<Player> player1_;
     std::unique_ptr<Player> player2_;
 
-    int maxSteps_ = MAX_TOTAL_STEPS; //defualt; can get another number from use
-    int numShells_ = NUM_SHELLS; //defualt; can get another number from use
+    int maxSteps_ = MAX_TOTAL_STEPS; //default; can get another number from use
+    int numShells_ = NUM_SHELLS; //default; can get another number from use
     int stepsLeftWhenShellsOver_ = STEPS_WHEN_SHELLS_OVER;
     int shellMovesPerStep_ = SHELL_MOVES_PER_STEP;
     int stepCounter_ = 0;
@@ -73,7 +73,7 @@ private:
     void handleAction(Tank& tank, ActionRequest action);
 
     //helper functions for the run() function
-    void decideAction(Tank& t);
+    ActionRequest decideAction(Tank& t, TankAlgorithm& algo);
 
     int getTotalShellsLeft() const;
     void countersHandler(Tank& tank);
@@ -95,8 +95,8 @@ private:
     //tanks?
 
     //more helper functions
-    void printBadStep(Tank& tank,Action action);
-    void printGoodStep(Tank& tank, Action action);
+    void printBadStep(Tank& tank,ActionRequest action);
+    void printGoodStep(Tank& tank, ActionRequest action);
     void printToFile(const std::string& message);
 
 
