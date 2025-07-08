@@ -64,6 +64,12 @@ public:
     void resetIsWaitingToMoveBack();
     void resetIsRightAfterMoveBack();
 
+    //for creating the output file
+    bool getWasKilledThisStep() const {return wasKilledThisStep_;}
+    bool getWasLastActionIgnored() const {return wasLastActionIgnored;}
+    void setWasKilledThisStep(bool val) {wasKilledThisStep_ = val;}
+    void setWasLastActionIgnored(bool val) {wasLastActionIgnored = val;}
+
 
 private:
     int playerId_ = 0;
@@ -89,6 +95,11 @@ private:
     // private methods - actions utility functions
     void actualRotateEighthLeft();
     void actualRotateEighthRight();
+
+    //for creating the output file
+    bool wasKilledThisStep_ = false;
+    bool wasLastActionIgnored = false;
+
 };
 
 #endif //TANK_H
