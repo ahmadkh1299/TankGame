@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
 
 InputParser::InputParser(const std::string& filename)
         : board_(1, 1), maxSteps_(0), numShells_(0) {
@@ -21,17 +22,24 @@ InputParser::InputParser(const std::string& filename)
     // Parse metadata
     int rows = 0, cols = 0;
     for (int i = 1; i <= 4; ++i) {
-        std::istringstream iss(lines[i]);
-        std::string key, eq;
-        iss >> key >> eq;
+        std::string line = lines[i];
+        line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end()); // remove all spaces
 
-        if (eq != "=") throw std::runtime_error("Malformed metadata line");
+        size_t eqPos = line.find('=');
+        if (eqPos == std::string::npos) {
+            throw std::runtime_error("Malformed metadata line");
+        }
 
-        if (key == "MaxSteps")        iss >> maxSteps_;
-        else if (key == "NumShells")  iss >> numShells_;
-        else if (key == "Rows")       iss >> rows;
-        else if (key == "Cols")       iss >> cols;
+        std::string key = line.substr(0, eqPos);
+        std::string value = line.substr(eqPos + 1);
+        int val = std::stoi(value);
+
+        if (key == "MaxSteps")        maxSteps_ = val;
+        else if (key == "NumShells")  numShells_ = val;
+        else if (key == "Rows")       rows = val;
+        else if (key == "Cols")       cols = val;
     }
+
 
     board_ = Board(cols, rows);
     int tankIdCounter = 0;

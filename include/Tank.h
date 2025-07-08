@@ -41,6 +41,7 @@ public:
     //void setShellsLeft();
     //void setWaitAfterShootCounter();
     //void setWaitToMoveBackCounter();
+    void setAlgorithm(std::unique_ptr<TankAlgorithm> algo);
     void setNextAction(ActionRequest action);
     void setLastAction(ActionRequest action);
 

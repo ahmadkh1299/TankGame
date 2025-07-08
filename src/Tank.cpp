@@ -322,6 +322,11 @@ TankAlgorithm* Tank::getAlgorithm() const {
     return algorithm_.get();
 }
 
+void Tank::setAlgorithm(std::unique_ptr<TankAlgorithm> algo) {
+    algorithm_ = std::move(algo);
+}
+
+
 bool Tank::getIstRequestedBattleInfo() const {
     return requestedBattleInfo_;
 }

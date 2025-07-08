@@ -7,14 +7,17 @@
 #include <type_traits>
 #include <algorithm>
 #include <memory>
+#include "MyTankAlgorithm.h"
 
 
-GameManager::GameManager(const PlayerFactory& playerFactory, const TankAlgorithmFactory& tankFactory)
-        : playerFactory_(playerFactory),
-          tankFactory_(tankFactory),
+GameManager::GameManager(std::unique_ptr<PlayerFactory> playerFactory,
+                         std::unique_ptr<TankAlgorithmFactory> tankFactory)
+        : playerFactory_(std::move(playerFactory)),
+          tankFactory_(std::move(tankFactory)),
           board_(1, 1),
           boardWidth_(1),
           boardHeight_(1) {}
+
 
 GameManager::~GameManager() {
     if (outputFile_.is_open()) {
@@ -35,14 +38,28 @@ bool GameManager::readBoard(const std::string& inputFile) {
     p1Tanks_ = parser.getPlayer1Tanks();
     p2Tanks_ = parser.getPlayer2Tanks();
 
+    for (size_t i = 0; i < p1Tanks_.size(); ++i) {
+        auto algo = tankFactory_->create(1, static_cast<int>(i));
+        p1Tanks_[i]->setAlgorithm(std::make_unique<MyTankAlgorithm>(
+                std::move(algo), 1, static_cast<int>(i)));
+    }
+
+    for (size_t i = 0; i < p2Tanks_.size(); ++i) {
+        auto algo = tankFactory_->create(2, static_cast<int>(i));
+        p2Tanks_[i]->setAlgorithm(std::make_unique<MyTankAlgorithm>(
+                std::move(algo), 2, static_cast<int>(i)));
+    }
+
+
+
     if (p1Tanks_.empty() || p2Tanks_.empty()) {
         std::cerr << "One or both players have no tanks.\n";
         return false;
     }
 
-    player1_ = playerFactory_.create(1, boardWidth_, boardHeight_, maxSteps_, numShells_);
-    player2_ = playerFactory_.create(2, boardWidth_, boardHeight_, maxSteps_, numShells_);
-    outputFile_.open("game_output.txt");
+    player1_ = playerFactory_->create(1, boardWidth_, boardHeight_, maxSteps_, numShells_);
+    player2_ = playerFactory_->create(2, boardWidth_, boardHeight_, maxSteps_, numShells_);
+    outputFile_.open("../game_output.txt");
     return true;
 }
 
@@ -185,6 +202,11 @@ void GameManager::handleRequestBattleInfo(Tank& tank) {
 
     //let the player update the tank's algorithm with BattleInfo
     if (player) {
+        if (!tank.getAlgorithm()) {
+            std::cerr << "Tank has no algorithm! Player: " << tank.getPlayerId()
+                      << ", Tank ID: " << tank.getId() << std::endl;
+            return;
+        }
         player->updateTankWithBattleInfo(*tank.getAlgorithm(), satellite);
     }
 

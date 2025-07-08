@@ -26,18 +26,19 @@ public:
   	static constexpr int NUM_SHELLS = 20;
     const int MAX_TOTAL_STEPS = 50000;
 
-    GameManager(const PlayerFactory& playerFactory,
-                const TankAlgorithmFactory& tankFactory);
+    GameManager(std::unique_ptr<PlayerFactory> playerFactory,
+                std::unique_ptr<TankAlgorithmFactory> tankFactory);
 
     ~GameManager(); // to close the file
 
     bool readBoard(const std::string& inputFile);
     void run();
 
-    const PlayerFactory& playerFactory_;
-    const TankAlgorithmFactory& tankFactory_;
+
 
 private:
+    std::unique_ptr<PlayerFactory> playerFactory_;
+    std::unique_ptr<TankAlgorithmFactory> tankFactory_;
     Board board_;
     std::vector<std::unique_ptr<Wall>> walls_;
     std::vector<std::unique_ptr<Mine>> mines_;
