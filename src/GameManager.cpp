@@ -169,8 +169,6 @@ int GameManager::getTotalShellsLeft() const
     return total;
 }
 
-#include "SatelliteViewImpl.h"
-#include "MyBattleInfo.h"
 
 void GameManager::handleRequestBattleInfo(Tank& tank) {
     //pre-action reset and check

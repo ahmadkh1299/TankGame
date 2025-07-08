@@ -7,9 +7,7 @@ Player2::Player2(int player_index, size_t x, size_t y, size_t max_steps, size_t 
           board_height_(y) {}
 
 void Player2::updateTankWithBattleInfo(TankAlgorithm& tank, SatelliteView& satellite_view) {
-    auto* algo = dynamic_cast<HunterAlgo*>(&tank);
-    if (!algo) return;
-
     MyBattleInfo info(satellite_view, player_index_, board_height_, board_width_, {0, 0});
-    algo->updateBattleInfo(info);
+    tank.updateBattleInfo(info);  // Polymorphic dispatch
 }
+
