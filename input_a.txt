@@ -3,6 +3,6 @@ MaxSteps = 5000
 NumShells=20
 Rows = 4
 Cols =10
-#### @ @ 
-# 1    @ 
+#### @ @
+# 1    @
 #  2

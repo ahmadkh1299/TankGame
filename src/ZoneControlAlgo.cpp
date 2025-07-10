@@ -186,41 +186,26 @@ ActionRequest ZoneControlAlgo::decideNextAction(
 ActionRequest ZoneControlAlgo::getAction() {
     turnsSinceLastUpdate_++;
 
-    // Detect ally tank losses using the most recent battle info
     if (currentInfo_.has_value()) {
         const MyBattleInfo& info = *currentInfo_;
-
-        size_t currentEnemyCount = 0;
-        size_t currentAllyCount = 0;
+        size_t currentEnemyCount = 0, currentAllyCount = 0;
         char enemySymbol = (tankId_ == 1) ? '2' : '1';
         char allySymbol = (tankId_ == 1) ? '1' : '2';
 
         for (size_t y = 0; y < info.getRows(); ++y) {
             for (size_t x = 0; x < info.getCols(); ++x) {
                 char obj = info.getObjectAt(x, y);
-                if (obj == enemySymbol) {
-                    currentEnemyCount++;
-                } else if (obj == allySymbol || obj == '%') {
-                    currentAllyCount++;
-                }
+                if (obj == enemySymbol) currentEnemyCount++;
+                else if (obj == allySymbol || obj == '%') currentAllyCount++;
             }
         }
 
-        bool allyDestroyed = lastKnownAllyCount_ > 0 &&
-                              currentAllyCount < lastKnownAllyCount_;
-
-        // Update stored counts after comparison so destruction is detected
+        bool allyDestroyed = lastKnownAllyCount_ > 0 && currentAllyCount < lastKnownAllyCount_;
         lastKnownEnemyCount_ = currentEnemyCount;
         lastKnownAllyCount_ = currentAllyCount;
-
-        if (allyDestroyed) {
-            return ActionRequest::GetBattleInfo;
-        }
+        if (allyDestroyed) return ActionRequest::GetBattleInfo;
     }
 
-    // Request battle info update if:
-    // 1. Enough turns have passed since last update
-    // 2. We haven't received initial battle info
     if (forceUpdateNextTurn_) {
         forceUpdateNextTurn_ = false;
         return ActionRequest::GetBattleInfo;
@@ -230,43 +215,37 @@ ActionRequest ZoneControlAlgo::getAction() {
         return ActionRequest::GetBattleInfo;
     }
 
-
-    // Access the battlefield state
     const MyBattleInfo& myInfo = *currentInfo_;
-    
-    // Create temporary board and objects for decideNextAction
     Board board(myInfo.getCols(), myInfo.getRows());
     std::vector<std::unique_ptr<Tank>> enemyTanks;
     std::vector<std::unique_ptr<Shell>> shells;
     std::vector<std::unique_ptr<Mine>> mines;
-    
-    // Find self position and create Tank object
+
     auto selfPos = myInfo.getSelfPosition();
-    Tank self(Position(selfPos.first, selfPos.second), Direction::Up, tankId_, 0); // Direction will be updated
-    
-    // Scan battlefield and populate objects
+    Direction selfDir = myInfo.inferSelfDirection();  // ✅ Use inferred direction
+    Tank self(Position(selfPos.first, selfPos.second), selfDir, tankId_, 0);
+
     char enemySymbol = (tankId_ == 1) ? '2' : '1';
     char allySymbol = (tankId_ == 1) ? '1' : '2';
+
     for (size_t y = 0; y < myInfo.getRows(); ++y) {
         for (size_t x = 0; x < myInfo.getCols(); ++x) {
             char obj = myInfo.getObjectAt(x, y);
             Position pos(x, y);
-            
+
             if (obj == '#') {
                 board.addGameObject(new Wall(pos), pos);
             } else if (obj == enemySymbol) {
                 auto enemyTank = std::make_unique<Tank>(pos, Direction::Up, 3 - tankId_, enemyTanks.size());
                 enemyTanks.push_back(std::move(enemyTank));
-            } else if (obj == allySymbol || obj == '%') { // '%' is our own tank
-                // No need to create a Tank object for ally or our own tank
             } else if (obj == '*') {
-                shells.push_back(std::make_unique<Shell>(pos, Direction::Up, 0)); // Direction unknown
+                shells.push_back(std::make_unique<Shell>(pos, Direction::Up, 0));
             } else if (obj == '@') {
                 mines.push_back(std::make_unique<Mine>(pos));
             }
         }
     }
-    
+
     return decideNextAction(self, board, enemyTanks, shells, mines);
 }
 
@@ -277,62 +256,51 @@ void ZoneControlAlgo::updateBattleInfo(BattleInfo& info) {
         return;
     }
 
-    const MyBattleInfo& myInfo = *myInfoPtr;
-    currentInfo_ = myInfo;
+    currentInfo_ = *myInfoPtr;
     turnsSinceLastUpdate_ = 0;
-    
-    // Count enemy and ally tanks
+
+    const MyBattleInfo& myInfo = *myInfoPtr;
     size_t currentEnemyCount = 0;
     size_t currentAllyCount = 0;
     char enemySymbol = (tankId_ == 1) ? '2' : '1';
     char allySymbol = (tankId_ == 1) ? '1' : '2';
-    
+
     for (size_t y = 0; y < myInfo.getRows(); ++y) {
         for (size_t x = 0; x < myInfo.getCols(); ++x) {
             char obj = myInfo.getObjectAt(x, y);
-            if (obj == enemySymbol) {
-                currentEnemyCount++;
-            } else if (obj == allySymbol || obj == '%') { // '%' is our own tank
-                currentAllyCount++;
-            }
+            if (obj == enemySymbol) currentEnemyCount++;
+            else if (obj == allySymbol || obj == '%') currentAllyCount++;
         }
     }
 
-    // Check if any tanks were destroyed
     bool enemyDestroyed = lastKnownEnemyCount_ > 0 && currentEnemyCount < lastKnownEnemyCount_;
     bool allyDestroyed = lastKnownAllyCount_ > 0 && currentAllyCount < lastKnownAllyCount_;
 
-    // Force an immediate update only for enemy losses; ally losses are handled in getAction()
-    if (enemyDestroyed) {
-        forceUpdateNextTurn_ = true;
-    }
-    
-    // Only recalculate zones if an ally was destroyed
+    if (enemyDestroyed) forceUpdateNextTurn_ = true;
+
     if (allyDestroyed && totalBoardWidth_ > 0) {
-        // Find our tank's position in the sequence (0-based index)
         int tankIndex = 0;
         int tankCount = 0;
         auto selfPos = myInfo.getSelfPosition();
-        
+
         for (size_t y = 0; y < myInfo.getRows(); ++y) {
             for (size_t x = 0; x < myInfo.getCols(); ++x) {
                 char obj = myInfo.getObjectAt(x, y);
                 if (obj == allySymbol || obj == '%') {
-                    if (x == selfPos.first && y == selfPos.second) {
+                    if (x == selfPos.first && y == selfPos.second)
                         tankIndex = tankCount;
-                    }
                     tankCount++;
                 }
             }
         }
-        
-        // Recalculate zone based on remaining tanks
+
         if (tankCount > 0) {
             int zoneWidth = totalBoardWidth_ / tankCount;
             zoneStart_ = tankIndex * zoneWidth;
             zoneEnd_ = (tankIndex == tankCount - 1) ? totalBoardWidth_ - 1 : (tankIndex + 1) * zoneWidth - 1;
         }
     }
-    
-    // Count updates are handled in getAction() after comparison
+
+    lastKnownEnemyCount_ = currentEnemyCount;
+    lastKnownAllyCount_ = currentAllyCount;
 }

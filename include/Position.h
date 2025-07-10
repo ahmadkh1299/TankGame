@@ -25,12 +25,12 @@ public:
     void set(int x, int y) { x_ = x; y_ = y; }
 
     // Wrap around board dimensions
+// Wrap around board dimensions (safe for negatives and large values)
     void wrap(int boardWidth, int boardHeight) {
-        if (x_ < 0) x_ += boardWidth;
-        if (y_ < 0) y_ += boardHeight;
-        if (x_ >= boardWidth) x_ %= boardWidth;
-        if (y_ >= boardHeight) y_ %= boardHeight;
+        x_ = ((x_ % boardWidth) + boardWidth) % boardWidth;
+        y_ = ((y_ % boardHeight) + boardHeight) % boardHeight;
     }
+
 
     //Moving
     void moveUp() {y_ -= 1;}

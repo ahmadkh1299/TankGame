@@ -9,13 +9,13 @@ std::unique_ptr<TankAlgorithm> MyTankAlgorithmFactory::create(int player_index, 
 
     if (player_index == 1) {
         // Player 1 uses ZoneControlAlgo
-        algo = std::make_unique<ZoneControlAlgo>(tank_index);
+        algo = std::make_unique<ZoneControlAlgo>(player_index);
     } else if (player_index == 2) {
         // Player 2 uses HunterAlgo
-        algo = std::make_unique<HunterAlgo>(tank_index);
+        algo = std::make_unique<HunterAlgo>(player_index);
     } else {
         // Fallback or default algorithm (optional)
-        algo = std::make_unique<ZoneControlAlgo>(tank_index);
+        algo = std::make_unique<ZoneControlAlgo>(player_index);
     }
 
     return algo;

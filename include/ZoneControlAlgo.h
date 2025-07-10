@@ -37,4 +37,5 @@ private:
     size_t lastKnownEnemyCount_;
     size_t lastKnownAllyCount_;  // Track number of ally tanks
     int totalBoardWidth_;        // Store total board width for zone calculations
+    std::optional<std::pair<size_t, size_t>> lastSelfPos_;  // 🔄 Track last position
 };
