@@ -1,0 +1,10 @@
+Balanced Test Map – 3 tanks each
+MaxSteps = 1000
+NumShells = 10
+Rows = 5
+Cols = 12
+############
+#1   @   2 #
+#1   @   2 #
+#1       2 #
+############

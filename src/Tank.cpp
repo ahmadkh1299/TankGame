@@ -164,6 +164,7 @@ void Tank::actualRotateEighthRight() {
     dir_ = static_cast<Direction>((static_cast<int>(dir_) + 1) % 8);
 }
 
+
 // for game manager use
 // return false if action did not succeed, cuz tank is waiting to move back,
 // including when it's the turn it should stop waiting and move back (i.e waitToMoveBackCounter_ ==0)

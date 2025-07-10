@@ -8,6 +8,7 @@
 #include "Wall.h"
 #include "Shell.h"
 #include "InputParser.h"
+#include "Position.h"
 #include "common/Player.h"
 #include "common/PlayerFactory.h"
 #include "common/TankAlgorithmFactory.h"
@@ -18,6 +19,7 @@
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <xmmintrin.h>
 
 class GameManager {
 public:
@@ -46,12 +48,13 @@ private:
 
     std::vector<std::unique_ptr<Tank>> p1Tanks_;
     std::vector<std::unique_ptr<Tank>> p2Tanks_;
+    std::vector<Tank*> allTanksSorted_;
 
     std::unique_ptr<Player> player1_;
     std::unique_ptr<Player> player2_;
 
-    int maxSteps_ = MAX_TOTAL_STEPS; //default; can get another number from use
-    int numShells_ = NUM_SHELLS; //default; can get another number from use
+    int maxSteps_ = MAX_TOTAL_STEPS; //default; can get another number from user
+    int numShells_ = NUM_SHELLS; //default; can get another number from user
     int stepsLeftWhenShellsOver_ = STEPS_WHEN_SHELLS_OVER;
     int shellMovesPerStep_ = SHELL_MOVES_PER_STEP;
     int stepCounter_ = 0;
@@ -103,8 +106,6 @@ private:
     //get pointers
     std::vector<Shell*> getShellPtrs() const;
     std::vector<Mine*> getMinePtrs() const;
-    //walls?
-    //tanks?
 
     //more helper functions
     void printBadStep(Tank& tank,ActionRequest action);
@@ -112,7 +113,11 @@ private:
     void printToFile(const std::string& message);
 
 
+    //for creating the output file
+    std::vector<Tank*> sortAllTanks(const std::vector<std::unique_ptr<Tank>>& p1Tanks,
+                                    const std::vector<std::unique_ptr<Tank>>& p2Tanks);
 
-
-
+    void printRoundToFile();
+    void printGameResult(int p1Alive, int p2Alive);
+    bool checkIfPlayerLostAllTanks(int& p1Alive, int& p2Alive);
 };
